@@ -22,7 +22,7 @@ allColorings cs g = map Map.fromList $ listPower (Map.keys g) cs
     listPower :: [Vertex] -> [Color] -> [[(Vertex, Color)]]
     listPower []     _  = [[]]
     listPower vs     [] = undefined
-    listPower (v:vs) cs = concat [map ((v, c) :) (listPower vs cs) | c <- cs]
+    listPower (v:vs) cs = concatMap (\c -> map ((v, c) :) (listPower vs cs)) cs
 
 validColoring :: Graph -> Coloring -> Bool
 validColoring g c = foldr (&&) True $ map (validVertex) (Map.keys g)
@@ -33,7 +33,6 @@ validColoring g c = foldr (&&) True $ map (validVertex) (Map.keys g)
 main = do
     let colors = [6, 9]
     let colorings = allColorings colors g
-    print $ colorings
     let valid = filter (validColoring g) colorings
     print valid
     return ()
