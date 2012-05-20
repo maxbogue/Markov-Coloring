@@ -2,8 +2,7 @@ module MarkovColoring where
 
 import System.Random (randomRIO)
 import Data.HashMap (Map, (!))
-import Data.List ((\\))
-import Control.Monad (foldM)
+import Data.List ((\\), delete)
 import qualified Data.HashMap as Map
 
 type Vertex = Int
@@ -37,6 +36,9 @@ validColoring g c = foldr (&&) True $ map (validVertex) (Map.keys g)
     validVertex v = let vc = (c ! v) in
         foldr (&&) True [vc /= c ! u | u <- g ! v]
 
+removeEdges :: Graph -> Vertex -> Graph
+removeEdges g v = fmap (delete v) (Map.insert v [] g)
+
 changeColoring :: [Color] -> Graph -> Coloring -> IO Coloring
 changeColoring cs g coloring = do
     let vertices = Map.keys g
@@ -51,9 +53,37 @@ changeColoring cs g coloring = do
 neighborColors :: Vertex -> Graph -> Coloring -> [Color]
 neighborColors v g coloring = map (coloring !) (g ! v)
 
-randomColoring :: [Color] -> Graph -> Coloring -> IO Coloring
-randomColoring cs g coloring = do
-    cascade (changeColoring cs g) coloring 100
+randomColoring :: [Color] -> Graph -> IO Coloring
+randomColoring cs g = do
+    let init = genColoring cs g
+    cascade (changeColoring cs g) init 100
+
+genColoring :: [Color] -> Graph -> Coloring
+genColoring cs g = head $ filter (validColoring g) (allColorings cs g)
+
+countColorings :: [Color] -> Graph -> IO Float
+countColorings cs g = do
+    let vs = (Map.keys g)
+    r <- aux vs g
+    return (fromIntegral ((length cs)^(length vs)) / r)
+  where
+    aux :: [Vertex] -> Graph -> IO Float
+    aux [] _ = return 1.0
+    aux (v:vs) g = do
+        let g' = removeEdges g v
+        x <- rho cs g g' 100
+        let y = 1 / ((fromIntegral x) / 100)
+        z <- aux vs g'
+        return (y * z)
+        
+rho :: [Color] -> Graph -> Graph -> Int -> IO Int
+rho _ _ _ 0 = return 0 
+rho cs g g' n = do
+    coloring <- randomColoring cs g'
+    let valid = validColoring g coloring
+    if valid
+       then (rho cs g g' (n - 1)) >>= (\x -> return (x + 1))
+       else rho cs g g' (n - 1)
 
 main = do
     let colors = [6, 9]
