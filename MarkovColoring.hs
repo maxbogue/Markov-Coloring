@@ -2,7 +2,7 @@ module MarkovColoring where
 
 import System.Random (randomRIO)
 import Data.HashMap (Map, (!))
-import Data.List ((\\), delete)
+import Data.List (delete, union, (\\))
 import qualified Data.HashMap as Map
 
 type Vertex = Int
@@ -84,6 +84,23 @@ rho cs g g' n = do
     if valid
        then (rho cs g g' (n - 1)) >>= (\x -> return (x + 1))
        else rho cs g g' (n - 1)
+
+constructGraph :: [(Vertex, Vertex)] -> Graph
+constructGraph [] = Map.empty
+constructGraph ((a,b):edges) = Map.insertWith union a [b] g where
+    g = Map.insertWith union b [a] $ constructGraph edges
+
+readGraph :: String -> IO (Int, Int, Int, Graph)
+readGraph fileName = do
+    fileContents <- readFile fileName
+    let (firstLine:ls) = lines fileContents
+    let [n, m, q] = parseArgs firstLine
+    return (n, m, q, constructGraph (map parseEdge ls))
+  where
+    parseArgs s = map read $ words s
+    parseEdge s = case parseArgs s of
+        [a, b] -> (a, b)
+        _      -> error "Bad edge."
 
 main = do
     let colors = [6, 9]
