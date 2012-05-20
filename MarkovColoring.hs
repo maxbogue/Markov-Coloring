@@ -30,6 +30,11 @@ validColoring g c = foldr (&&) True $ map (validVertex) (Map.keys g)
     validVertex v = let vc = (c ! v) in
         foldr (&&) True [vc /= c ! u | u <- g ! v]
 
+changeColoring :: Vertex -> Color -> Graph -> Coloring -> Coloring
+changeColoring v c g cs = if (validColoring g newcs) then newcs else cs
+  where 
+    newcs = Map.insert v c cs
+
 main = do
     let colors = [6, 9]
     let colorings = allColorings colors g
