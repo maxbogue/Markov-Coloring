@@ -18,6 +18,8 @@ g = Map.fromList [(1, [2]), (2, [1]), (3, [4]), (4, [3])]
 allColorings :: [Color] -> Graph -> [Coloring]
 allColorings cs g = map Map.fromList $ listPower (Map.keys g) cs
   where
+    -- Named listPower because the resulting list has q^n elements.
+    listPower :: [Vertex] -> [Color] -> [[(Vertex, Color)]]
     listPower []     _  = [[]]
     listPower vs     [] = undefined
     listPower (v:vs) cs = concat [map ((v, c) :) (listPower vs cs) | c <- cs]
