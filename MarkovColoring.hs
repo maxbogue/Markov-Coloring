@@ -1,8 +1,8 @@
-module MarkovColoring where
 
 import System.Random (randomRIO)
 import Data.HashMap (Map, (!))
 import Data.List (delete, union, (\\))
+import System.Environment (getArgs)
 import qualified Data.HashMap as Map
 
 -- A vertex is simply represented as an int.
@@ -136,10 +136,22 @@ readGraph fileName = do
         [a, b] -> (a, b)
         _      -> error "Bad edge."
 
+-- If reads can get a valid parse of the string, return just that
+maybeRead :: (Read a) => String -> Maybe a
+maybeRead s = case reads s of
+                   [(x,_)] -> Just x
+                   _       -> Nothing
+
+main :: IO ()
 main = do
-    (n, m, q, g) <- readGraph "test.txt"
-    let colors = [1..q]
-    let colorings = allColorings colors g
-    let valid = filter (isValidColoring g) colorings
-    print $ length valid
-    return ()
+    args <- getArgs
+    case args of 
+         [fn, es, algo] | Just e <- maybeRead es -> do
+            (n, m, q, g) <- readGraph fn
+            let colors = [1..q]
+            count <- case algo of
+                 "markov" -> countColorings colors g e
+                 "bruteforce" -> return $ fromIntegral (length (validColorings colors g))
+            putStrLn $ show count
+            return ()
+         _ -> putStrLn "Usage: MarkovColoring <filename> <epsilon> <markov|bruteforce>"
