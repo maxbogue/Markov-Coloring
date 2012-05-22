@@ -68,36 +68,43 @@ changeColoring cs g coloring = do
     if isValidColoring g coloring' then return coloring' else return coloring
 
 -- Generate a random coloring of the map using the Markov chain.
-randomColoring :: [Color] -> Graph -> IO Coloring
-randomColoring cs g = do
+randomColoring :: [Color] -> Graph -> Float -> IO Coloring
+randomColoring cs g e = do
     let init = generateColoring cs g
-    cascade (changeColoring cs g) init 100
+    cascade (changeColoring cs g) init (ceiling t)
+  where
+    q = fromIntegral $ length cs
+    n = fromIntegral $ length (Map.keys g)
+    d = fromIntegral $ maximum (map length (Map.elems g))
+    t = (q * n) / ((q - 2 * d)) * log (n / e)
 
 -- Estimate a count of the number of colorings of a graph.
-countColorings :: [Color] -> Graph -> IO Float
-countColorings cs g = do
+countColorings :: [Color] -> Graph -> Float -> IO Float
+countColorings cs g e = do
     let vs = (Map.keys g)
     r <- aux vs g
-    return (fromIntegral ((length cs)^(length vs)) / r)
+    return (fromIntegral ((length cs)^(length vs)) * r)
   where
+    n = length (Map.keys g)
+    s = (n * 75 * (ceiling (1 / e)))
     aux :: [Vertex] -> Graph -> IO Float
     aux [] _ = return 1.0
     aux (v:vs) g = do
         let g' = removeEdges g v
-        x <- rho cs g g' 100
-        let y = 1 / ((fromIntegral x) / 100)
+        x <- rho cs g g' e s
+        let y = (fromIntegral x) / fromIntegral s
         z <- aux vs g'
         return (y * z)
 
 -- Calculates the rho value used in the countColoring estimation.
-rho :: [Color] -> Graph -> Graph -> Int -> IO Int
-rho _ _ _ 0 = return 0 
-rho cs g g' n = do
-    coloring <- randomColoring cs g'
+rho :: [Color] -> Graph -> Graph -> Float -> Int -> IO Int
+rho _ _ _ _ 0 = return 0 
+rho cs g g' e n = do
+    coloring <- randomColoring cs g' e
     let valid = isValidColoring g coloring
     if valid
-       then (rho cs g g' (n - 1)) >>= (\x -> return (x + 1))
-       else rho cs g g' (n - 1)
+       then (rho cs g g' e (n - 1)) >>= (\x -> return (x + 1))
+       else rho cs g g' e (n - 1)
 
 -- Constructs a graph from a list of edges.
 constructGraph :: [(Vertex, Vertex)] -> Graph
