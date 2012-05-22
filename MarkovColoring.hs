@@ -30,8 +30,8 @@ allColorings cs g = map Map.fromList $ listPower (Map.keys g) cs
     listPower vs     [] = undefined
     listPower (v:vs) cs = concatMap (\c -> map ((v, c) :) (listPower vs cs)) cs
 
-validColoring :: Graph -> Coloring -> Bool
-validColoring g c = foldr (&&) True $ map (validVertex) (Map.keys g)
+isValidColoring :: Graph -> Coloring -> Bool
+isValidColoring g c = foldr (&&) True $ map (validVertex) (Map.keys g)
   where
     validVertex v = let vc = (c ! v) in
         foldr (&&) True [vc /= c ! u | u <- g ! v]
@@ -48,7 +48,7 @@ changeColoring cs g coloring = do
     idxC <- randomRIO (0, length valid - 1)
     let c = valid !! idxC
     let coloring' = Map.insert v c coloring
-    if validColoring g coloring' then return coloring' else return coloring
+    if isValidColoring g coloring' then return coloring' else return coloring
 
 neighborColors :: Vertex -> Graph -> Coloring -> [Color]
 neighborColors v g coloring = map (coloring !) (g ! v)
@@ -80,7 +80,7 @@ rho :: [Color] -> Graph -> Graph -> Int -> IO Int
 rho _ _ _ 0 = return 0 
 rho cs g g' n = do
     coloring <- randomColoring cs g'
-    let valid = validColoring g coloring
+    let valid = isValidColoring g coloring
     if valid
        then (rho cs g g' (n - 1)) >>= (\x -> return (x + 1))
        else rho cs g g' (n - 1)
@@ -105,6 +105,6 @@ readGraph fileName = do
 main = do
     let colors = [6, 9]
     let colorings = allColorings colors g
-    let valid = filter (validColoring g) colorings
+    let valid = filter (isValidColoring g) colorings
     print valid
     return ()
