@@ -109,8 +109,9 @@ rho cs g g' e n = do
 -- Constructs a graph from a list of edges.
 constructGraph :: [(Vertex, Vertex)] -> Graph
 constructGraph [] = Map.empty
-constructGraph ((a,b):edges) = Map.insertWith union a [b] g where
-    g = Map.insertWith union b [a] $ constructGraph edges
+constructGraph ((a,b):edges) = Map.insertWith union a [b] $
+                               Map.insertWith union b [a] $
+                               constructGraph edges
 
 -- Reads a graph from a file.  Returns (n, m, q, graph).
 readGraph :: String -> IO (Int, Int, Int, Graph)
