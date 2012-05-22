@@ -139,7 +139,7 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of 
-         [fn, es, algo] | Just e <- maybeRead es -> do
+        [fn, es, algo] | Just e <- maybeRead es -> do
             (n, m, q, g) <- readGraph fn
             let colors = [1..q]
             count <- case algo of
