@@ -79,7 +79,9 @@ randomColoring cs g e = do
     q = fromIntegral $ length cs
     n = fromIntegral $ length (Map.keys g)
     d = fromIntegral $ maximum (map length (Map.elems g))
-    t = (q * n) / ((q - 2 * d)) * log (n / e)
+    t = if q - (2 * d) > 0
+        then (q * n) / ((q - 2 * d)) * log (n / e)
+        else n * log ( n / e)
 
 -- Estimate a count of the number of colorings of a graph.
 countColorings :: [Color] -> Graph -> Float -> IO Float
