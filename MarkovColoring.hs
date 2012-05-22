@@ -93,6 +93,7 @@ countColorings cs g e = do
     aux :: [Vertex] -> Graph -> IO Float
     aux [] _ = return 1.0
     aux (v:vs) g = do
+        putStrLn $ "vertices left:" ++ show ( (length vs) + 1)
         let g' = removeEdges g v
         x <- rho cs g g' e s
         let y = (fromIntegral x) / fromIntegral s
