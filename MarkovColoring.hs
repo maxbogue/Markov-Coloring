@@ -28,7 +28,13 @@ removeEdges g v = fmap (delete v) (Map.insert v [] g)
 
 -- Returns a list of colors used by neighbors of a given vertex.
 neighborColors :: Vertex -> Graph -> Coloring -> [Color]
-neighborColors v g coloring = map (coloring !) (g ! v)
+neighborColors v g coloring = maybeMap (\n -> Map.lookup n coloring) (g ! v)
+  where
+    maybeMap :: (a -> Maybe b) -> [a] -> [b]
+    maybeMap _ []     = []
+    maybeMap f (a:as) = case f a of
+        Just b  -> b : maybeMap f as
+        Nothing -> maybeMap f as
 
 -- Generates colorings of a graph, regardless of validity.
 allColorings :: [Color] -> Graph -> [Coloring]
@@ -49,7 +55,11 @@ isValidColoring g c = foldr (&&) True $ map (validVertex) (Map.keys g)
 
 -- Generate all valid colorings of a graph.
 validColorings :: [Color] -> Graph -> [Coloring]
-validColorings cs g = filter (isValidColoring g) (allColorings cs g)
+validColorings cs g = color (Map.empty) (Map.keys g)
+  where
+    color :: Coloring -> [Vertex] -> [Coloring]
+    color cg [] = [cg]
+    color cg (v:vs) = concatMap (\c -> color (Map.insert v c cg) vs) (cs \\ neighborColors v g cg)
 
 -- Generate a single (non-random) coloring of a graph.
 generateColoring :: [Color] -> Graph -> Coloring
