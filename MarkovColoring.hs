@@ -21,6 +21,12 @@ cascade      :: (Monad m) => (a -> m a) -> a -> Int -> m a
 cascade _ x 0 =  return x
 cascade f x n =  f x >>= \x' -> cascade f x' (n - 1)
 
+removeEdges :: Graph -> Vertex -> Graph
+removeEdges g v = fmap (delete v) (Map.insert v [] g)
+
+neighborColors :: Vertex -> Graph -> Coloring -> [Color]
+neighborColors v g coloring = map (coloring !) (g ! v)
+
 allColorings :: [Color] -> Graph -> [Coloring]
 allColorings cs g = map Map.fromList $ listPower (Map.keys g) cs
   where
@@ -42,9 +48,6 @@ validColorings cs g = filter (isValidColoring g) (allColorings cs g)
 generateColoring :: [Color] -> Graph -> Coloring
 generateColoring cs g = head $ validColorings cs g
 
-removeEdges :: Graph -> Vertex -> Graph
-removeEdges g v = fmap (delete v) (Map.insert v [] g)
-
 changeColoring :: [Color] -> Graph -> Coloring -> IO Coloring
 changeColoring cs g coloring = do
     let vertices = Map.keys g
@@ -55,9 +58,6 @@ changeColoring cs g coloring = do
     let c = valid !! idxC
     let coloring' = Map.insert v c coloring
     if isValidColoring g coloring' then return coloring' else return coloring
-
-neighborColors :: Vertex -> Graph -> Coloring -> [Color]
-neighborColors v g coloring = map (coloring !) (g ! v)
 
 randomColoring :: [Color] -> Graph -> IO Coloring
 randomColoring cs g = do
