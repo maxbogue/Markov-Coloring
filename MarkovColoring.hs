@@ -36,6 +36,12 @@ isValidColoring g c = foldr (&&) True $ map (validVertex) (Map.keys g)
     validVertex v = let vc = (c ! v) in
         foldr (&&) True [vc /= c ! u | u <- g ! v]
 
+validColorings :: [Color] -> Graph -> [Coloring]
+validColorings cs g = filter (isValidColoring g) (allColorings cs g)
+
+generateColoring :: [Color] -> Graph -> Coloring
+generateColoring cs g = head $ validColorings cs g
+
 removeEdges :: Graph -> Vertex -> Graph
 removeEdges g v = fmap (delete v) (Map.insert v [] g)
 
@@ -55,11 +61,8 @@ neighborColors v g coloring = map (coloring !) (g ! v)
 
 randomColoring :: [Color] -> Graph -> IO Coloring
 randomColoring cs g = do
-    let init = genColoring cs g
+    let init = generateColoring cs g
     cascade (changeColoring cs g) init 100
-
-genColoring :: [Color] -> Graph -> Coloring
-genColoring cs g = head $ filter (validColoring g) (allColorings cs g)
 
 countColorings :: [Color] -> Graph -> IO Float
 countColorings cs g = do
