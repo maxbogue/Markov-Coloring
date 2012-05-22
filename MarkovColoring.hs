@@ -14,9 +14,6 @@ type Color = Int
 
 type Coloring = Map Vertex Color
 
-g :: Graph
-g = Map.fromList [(1, [2]), (2, [1]), (3, [4]), (4, [3])]
-
 cascade      :: (Monad m) => (a -> m a) -> a -> Int -> m a
 cascade _ x 0 =  return x
 cascade f x n =  f x >>= \x' -> cascade f x' (n - 1)
@@ -106,8 +103,9 @@ readGraph fileName = do
         _      -> error "Bad edge."
 
 main = do
-    let colors = [6, 9]
+    (n, m, q, g) <- readGraph "test.txt"
+    let colors = [1..q]
     let colorings = allColorings colors g
     let valid = filter (isValidColoring g) colorings
-    print valid
+    print $ length valid
     return ()
