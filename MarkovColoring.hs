@@ -147,4 +147,4 @@ main = do
                  "bruteforce" -> return $ fromIntegral (length (validColorings colors g))
             putStrLn $ show count
             return ()
-         _ -> putStrLn "Usage: MarkovColoring <filename> <epsilon> <markov|bruteforce>"
+        _ -> putStrLn "Usage: MarkovColoring <filename> <epsilon> <markov|bruteforce>"
