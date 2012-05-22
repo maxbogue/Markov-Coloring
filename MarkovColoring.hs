@@ -36,16 +36,6 @@ neighborColors v g coloring = maybeMap (\n -> Map.lookup n coloring) (g ! v)
         Just b  -> b : maybeMap f as
         Nothing -> maybeMap f as
 
--- Generates colorings of a graph, regardless of validity.
-allColorings :: [Color] -> Graph -> [Coloring]
-allColorings cs g = map Map.fromList $ listPower (Map.keys g) cs
-  where
-    -- Named listPower because the resulting list has q^n elements.
-    listPower :: [Vertex] -> [Color] -> [[(Vertex, Color)]]
-    listPower []     _  = [[]]
-    listPower vs     [] = undefined
-    listPower (v:vs) cs = concatMap (\c -> map ((v, c) :) (listPower vs cs)) cs
-
 -- Test a graph coloring for validity.
 isValidColoring :: Graph -> Coloring -> Bool
 isValidColoring g c = foldr (&&) True $ map (validVertex) (Map.keys g)
@@ -55,11 +45,14 @@ isValidColoring g c = foldr (&&) True $ map (validVertex) (Map.keys g)
 
 -- Generate all valid colorings of a graph.
 validColorings :: [Color] -> Graph -> [Coloring]
-validColorings cs g = color (Map.empty) (Map.keys g)
+validColorings cs g = validColorings' (Map.empty) (Map.keys g)
   where
-    color :: Coloring -> [Vertex] -> [Coloring]
-    color cg [] = [cg]
-    color cg (v:vs) = concatMap (\c -> color (Map.insert v c cg) vs) (cs \\ neighborColors v g cg)
+    -- Takes a coloring so far and a list of remaining vertices to color.
+    validColorings' :: Coloring -> [Vertex] -> [Coloring]
+    validColorings' cg []     = [cg]
+    validColorings' cg (v:vs) = concatMap
+        (\c -> validColorings' (Map.insert v c cg) vs)
+        (cs \\ neighborColors v g cg)
 
 -- Generate a single (non-random) coloring of a graph.
 generateColoring :: [Color] -> Graph -> Coloring
@@ -136,7 +129,7 @@ readGraph fileName = do
         [a, b] -> (a, b)
         _      -> error "Bad edge."
 
--- If reads can get a valid parse of the string, return just that
+-- If reads can get a valid parse of the string, return just that.
 maybeRead :: (Read a) => String -> Maybe a
 maybeRead s = case reads s of
                    [(x,_)] -> Just x
