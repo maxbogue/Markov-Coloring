@@ -71,10 +71,8 @@ changeColoring cs g coloring = do
     if isValidColoring g coloring' then return coloring' else return coloring
 
 -- Generate a random coloring of the map using the Markov chain.
-randomColoring :: [Color] -> Graph -> Float -> IO Coloring
-randomColoring cs g e = do
-    let init = generateColoring cs g
-    cascade (changeColoring cs g) init (ceiling t)
+randomColoring :: [Color] -> Coloring -> Graph -> Float -> IO Coloring
+randomColoring cs init g e = cascade (changeColoring cs g) init (ceiling t)
   where
     q = fromIntegral $ length cs
     n = fromIntegral $ length (Map.keys g)
@@ -97,20 +95,21 @@ countColorings cs g e = do
     aux (v:vs) g = do
         putStrLn $ "vertices left:" ++ show ( (length vs) + 1)
         let g' = removeEdges g v
-        x <- rho cs g g' e s
+        let init = generateColoring cs g'
+        x <- rho cs init g g' e s
         let y = (fromIntegral x) / fromIntegral s
         z <- aux vs g'
         return (y * z)
 
 -- Calculates the rho value used in the countColoring estimation.
-rho :: [Color] -> Graph -> Graph -> Float -> Int -> IO Int
-rho _ _ _ _ 0 = return 0 
-rho cs g g' e n = do
-    coloring <- randomColoring cs g' e
+rho :: [Color] -> Coloring -> Graph -> Graph -> Float -> Int -> IO Int
+rho _ _ _ _ _ 0 = return 0 
+rho cs init g g' e n = do
+    coloring <- randomColoring cs init g' e
     let valid = isValidColoring g coloring
     if valid
-       then (rho cs g g' e (n - 1)) >>= (\x -> return (x + 1))
-       else rho cs g g' e (n - 1)
+       then (rho cs init g g' e (n - 1)) >>= (\x -> return (x + 1))
+       else rho cs init g g' e (n - 1)
 
 -- Constructs a graph from a list of edges.
 constructGraph :: [(Vertex, Vertex)] -> Graph
