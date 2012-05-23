@@ -144,9 +144,8 @@ main = do
         [fn, es, algo] | Just e <- maybeRead es -> do
             (n, m, q, g) <- readGraph fn
             let colors = [1..q]
-            count <- case algo of
-                 "markov" -> countColorings colors g e
-                 "bruteforce" -> return $ fromIntegral (length (validColorings colors g))
-            putStrLn $ show count
+            case algo of
+                 "markov"     -> print =<< countColorings colors g e
+                 "bruteforce" -> print $ length (validColorings colors g)
             return ()
         _ -> putStrLn "Usage: MarkovColoring <filename> <epsilon> <markov|bruteforce>"
