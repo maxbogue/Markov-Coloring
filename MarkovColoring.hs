@@ -71,7 +71,7 @@ changeColoring cs g coloring = do
     if isValidColoring g coloring' then return coloring' else return coloring
 
 -- Generate a random coloring of the map using the Markov chain.
-randomColoring :: [Color] -> Coloring -> Graph -> Float -> IO Coloring
+randomColoring :: [Color] -> Coloring -> Graph -> Double -> IO Coloring
 randomColoring cs init g e = cascade (changeColoring cs g) init (ceiling t)
   where
     q = fromIntegral $ length cs
@@ -82,15 +82,15 @@ randomColoring cs init g e = cascade (changeColoring cs g) init (ceiling t)
         else n * log ( n / e)
 
 -- Estimate a count of the number of colorings of a graph.
-countColorings :: [Color] -> Graph -> Float -> IO Float
+countColorings :: [Color] -> Graph -> Double -> IO Double
 countColorings cs g e = do
     let vs = (Map.keys g)
     r <- aux vs g
-    return (fromIntegral ((length cs)^(length vs)) * r)
+    return $ ((fromIntegral (length cs))^(fromIntegral (length vs))) * r
   where
     n = length (Map.keys g)
     s = (n * 75 * (ceiling (1 / e)))
-    aux :: [Vertex] -> Graph -> IO Float
+    aux :: [Vertex] -> Graph -> IO Double
     aux [] _ = return 1.0
     aux (v:vs) g = do
         putStrLn $ "vertices left:" ++ show ( (length vs) + 1)
@@ -102,7 +102,7 @@ countColorings cs g e = do
         return (y * z)
 
 -- Calculates the rho value used in the countColoring estimation.
-rho :: [Color] -> Coloring -> Graph -> Graph -> Float -> Int -> IO Int
+rho :: [Color] -> Coloring -> Graph -> Graph -> Double -> Int -> IO Int
 rho _ _ _ _ _ 0 = return 0 
 rho cs init g g' e n = do
     coloring <- randomColoring cs init g' e
