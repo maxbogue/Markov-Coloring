@@ -1,8 +1,8 @@
-
-import System.Random (randomRIO)
+import Data.Array.IO
 import Data.HashMap (Map, (!))
-import Data.List (delete, union, (\\))
+import Data.List (delete, sort, union, (\\))
 import System.Environment (getArgs)
+import System.Random (randomRIO)
 import qualified Data.HashMap as Map
 
 -- A vertex is simply represented as an int.
@@ -17,14 +17,24 @@ type Color = Int
 -- Colorings are decoupled from their graphs and simply map vertices to colors.
 type Coloring = Map Vertex Color
 
+-- A mutable coloring.
+type MColoring = IOUArray Vertex Color
+
 -- Utility function to repeatedly apply a monadic computation.
 cascade :: (Monad m) => (a -> m a) -> a -> Int -> m a
 cascade _ x 0 =  return x
 cascade f x n =  f x >>= \x' -> cascade f x' (n - 1)
 
+makeBounds :: [a] -> (Int, Int)
+makeBounds ls = (0, length ls - 1)
+
 -- Remove all the edges adjacent to a vertex from the graph.
 removeEdges :: Graph -> Vertex -> Graph
 removeEdges g v = fmap (delete v) (Map.insert v [] g)
+
+mColoring :: Coloring -> IO MColoring
+mColoring c = let pairs = Map.toList c in
+    newListArray (makeBounds pairs) $ map snd $ sort $ pairs
 
 -- Returns a list of colors used by neighbors of a given vertex.
 neighborColors :: Vertex -> Graph -> Coloring -> [Color]
@@ -37,11 +47,14 @@ neighborColors v g coloring = maybeMap (\n -> Map.lookup n coloring) (g ! v)
         Nothing -> maybeMap f as
 
 -- Test a graph coloring for validity.
-isValidColoring :: Graph -> Coloring -> Bool
-isValidColoring g c = foldr (&&) True $ map (validVertex) (Map.keys g)
+isValidColoring :: Graph -> MColoring -> IO Bool
+isValidColoring g c = do
+    return . foldr (&&) True =<< mapM (validVertex) (Map.keys g)
   where
-    validVertex v = let vc = (c ! v) in
-        foldr (&&) True [vc /= c ! u | u <- g ! v]
+    validVertex v = do
+        vc <- readArray c v
+        cs <- mapM (readArray c) (g ! v)
+        return $ foldr (&&) True $ map (vc /=) cs
 
 -- Generate all valid colorings of a graph.
 validColorings :: [Color] -> Graph -> [Coloring]
@@ -58,20 +71,25 @@ validColorings cs g = validColorings' (Map.empty) (Map.keys g)
 generateColoring :: [Color] -> Graph -> Coloring
 generateColoring cs g = head $ validColorings cs g
 
+mNeighborColors :: Vertex -> Graph -> MColoring -> IO [Color]
+mNeighborColors v g coloring = mapM (readArray coloring) (g ! v)
+
 -- Performs one step of the coloring Markov chain.
-changeColoring :: [Color] -> Graph -> Coloring -> IO Coloring
+changeColoring :: [Color] -> Graph -> MColoring -> IO MColoring
 changeColoring cs g coloring = do
     let vertices = Map.keys g
-    idxV <- randomRIO (0, length vertices - 1)
-    let v = vertices !! idxV
-    let valid = cs \\ neighborColors v g coloring
-    idxC <- randomRIO (0, length valid - 1)
-    let c = valid !! idxC
-    let coloring' = Map.insert v c coloring
-    if isValidColoring g coloring' then return coloring' else return coloring
+    iv <- randomRIO (makeBounds vertices)
+    let v = vertices !! iv
+    validColors <- return . (cs \\) =<< mNeighborColors v g coloring
+    c <- readArray coloring v
+    c' <- return . (validColors !!) =<< randomRIO (makeBounds validColors)
+    writeArray coloring v c'
+    isValidColoring g coloring >>= \b -> if b
+        then return coloring
+        else writeArray coloring v c >> return coloring
 
 -- Generate a random coloring of the map using the Markov chain.
-randomColoring :: [Color] -> Coloring -> Graph -> Double -> IO Coloring
+randomColoring :: [Color] -> MColoring -> Graph -> Double -> IO MColoring
 randomColoring cs init g e = cascade (changeColoring cs g) init (ceiling t)
   where
     q = fromIntegral $ length cs
@@ -95,18 +113,18 @@ countColorings cs g e = do
     aux (v:vs) g = do
         putStrLn $ "vertices left:" ++ show ( (length vs) + 1)
         let g' = removeEdges g v
-        let init = generateColoring cs g'
+        init <- mColoring $ generateColoring cs g'
         x <- rho cs init g g' e s
         let y = (fromIntegral x) / fromIntegral s
         z <- aux vs g'
         return (y * z)
 
 -- Calculates the rho value used in the countColoring estimation.
-rho :: [Color] -> Coloring -> Graph -> Graph -> Double -> Int -> IO Int
+rho :: [Color] -> MColoring -> Graph -> Graph -> Double -> Int -> IO Int
 rho _ _ _ _ _ 0 = return 0 
 rho cs init g g' e n = do
     coloring <- randomColoring cs init g' e
-    let valid = isValidColoring g coloring
+    valid <- isValidColoring g coloring
     if valid
        then (rho cs init g g' e (n - 1)) >>= (\x -> return (x + 1))
        else rho cs init g g' e (n - 1)
